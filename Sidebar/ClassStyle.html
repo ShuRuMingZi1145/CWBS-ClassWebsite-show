@@ -178,12 +178,33 @@
             headers['Last-Modified'] = String(file.lastModified || Date.now());
             headers['As-Task'] = 'false';
             if (AUTH_TOKEN) headers['Authorization'] = AUTH_TOKEN;
-            const resp = await fetch(putUrl, { method: 'PUT', headers, body: file });
+            try {
+                const resp = await fetch(putUrl, { method: 'PUT', headers, body: file });
+                if (!resp.ok) {
+                    const txt = await resp.text().catch(()=>'');
+                    throw new Error('upload failed: ' + resp.status + ' ' + txt);
+                }
+                return resp;
+            } catch (e) {
+                console.warn('PUT 上传失败，尝试 multipart POST 回退：', e);
+                // 回退到 multipart/form-data POST 到 /as/put（一些部署支持）
+                return postMultipartUpload(file, targetPath);
+            }
+        }
+
+        async function postMultipartUpload(file, targetPath) {
+            const postUrl = REMOTE_BASE + '/as/put';
+            const fd = new FormData();
+            fd.append('file', file);
+            // 如果 API 支持通过表单字段指定路径
+            fd.append('path', targetPath);
+            const headers = {};
+            if (AUTH_TOKEN) headers['Authorization'] = AUTH_TOKEN;
+            const resp = await fetch(postUrl, { method: 'POST', headers, body: fd });
             if (!resp.ok) {
                 const txt = await resp.text().catch(()=>'');
-                throw new Error('upload failed: ' + resp.status + ' ' + txt);
+                throw new Error('multipart upload failed: ' + resp.status + ' ' + txt);
             }
-            // 有些实现返回 JSON 包含 code/message/data；我们不依赖于它，随后通过 list 刷新
             return resp;
         }
 
