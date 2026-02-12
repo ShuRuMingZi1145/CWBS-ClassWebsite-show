@@ -112,15 +112,37 @@
             initGallery();
         }
 
-        // 简单客户端画廊（使用 localStorage 保存为 dataURL，非持久化到服务器）
-        const GALLERY_STORAGE_KEY = 'cwbs_gallery_items_v1';
+        // 远程存储配置
+        const REMOTE_BASE = 'http://103.40.14.81:55618';
+        const REMOTE_DIR = '/list/all/CWBS-ClassWebsite-show';
+        // 如需鉴权，请把 token 填入下面变量（不带 Bearer 前缀，按目标 API 要求）
+        const AUTH_TOKEN = '';
+
         let galleryItems = [];
 
-        function initGallery() {
+        async function initGallery() {
             const uploadBtn = document.getElementById('upload-btn');
             const fileInput = document.getElementById('file-input');
-            loadFromStorage();
+            // 先从服务器加载持久化的画廊项
+            let serverItems = [];
+            try {
+                // 使用文件列表 API（POST /api/fs/list）
+                const listUrl = REMOTE_BASE + '/api/fs/list';
+                const headers = { 'Content-Type': 'application/json' };
+                if (AUTH_TOKEN) headers['Authorization'] = AUTH_TOKEN;
+                const resp = await fetch(listUrl, { method: 'POST', headers, body: JSON.stringify({ path: REMOTE_DIR, page: 1, per_page: 200 }) });
+                if (resp.ok) {
+                    const j = await resp.json();
+                    // 兼容不同返回结构：优先取 data.content
+                    const content = (j && j.data && j.data.content) ? j.data.content : (j && j.content) ? j.content : (Array.isArray(j) ? j : []);
+                    serverItems = Array.isArray(content) ? content.map(normalizeRemoteItem) : [];
+                }
+            } catch (e) {
+                console.warn('无法加载服务器画廊，使用本地缓存', e);
+            }
+            galleryItems = serverItems;
             renderGallery();
+
             if (uploadBtn && fileInput) {
                 uploadBtn.addEventListener('click', () => fileInput.click());
                 fileInput.addEventListener('change', (e) => {
@@ -130,68 +152,39 @@
                 });
             }
         }
-
-        function loadFromStorage() {
-            try {
-                const raw = localStorage.getItem(GALLERY_STORAGE_KEY);
-                galleryItems = raw ? JSON.parse(raw) : [];
-            } catch (e) {
-                galleryItems = [];
-            }
-        }
-
-        function saveToStorage() {
-            try { localStorage.setItem(GALLERY_STORAGE_KEY, JSON.stringify(galleryItems)); } catch (e) { console.warn('保存画廊失败', e); }
-        }
+        // 不再使用 localStorage 回退；全部使用远程 API
 
         async function handleFiles(files) {
-            const processed = [];
             for (const f of files) {
-                const date = new Date(f.lastModified || Date.now()).toISOString().split('T')[0];
                 try {
-                    // 优先上传到服务器
-                    const res = await uploadToServer(f);
-                    if (res && res.success && res.fileUrl) {
-                        processed.push({
-                            id: Date.now().toString(36) + Math.random().toString(36).slice(2,8),
-                            name: f.name,
-                            type: f.type,
-                            url: res.fileUrl,
-                            date
-                        });
-                        continue;
-                    }
+                    // 上传到远程文件系统（PUT 流式）
+                    await uploadToRemote(f);
                 } catch (e) {
-                    console.warn('上传到服务器失败，回退到本地：', e);
-                }
-                // 回退：使用 dataURL 保存到 localStorage
-                try {
-                    const dataURL = await readFileAsDataURL(f);
-                    processed.push({
-                        id: Date.now().toString(36) + Math.random().toString(36).slice(2,8),
-                        name: f.name,
-                        type: f.type,
-                        data: dataURL,
-                        date
-                    });
-                } catch (e) {
-                    console.warn('读取文件失败', e);
+                    console.error('上传失败', e);
+                    alert('上传失败: ' + (e.message || e));
                 }
             }
-            galleryItems = processed.concat(galleryItems);
-            saveToStorage();
-            renderGallery();
+            // 上传完成后刷新列表
+            await initGallery();
         }
 
-        // 上传单个文件到服务器，返回 { success: true, fileUrl: '/uploads/xxx' }
-        async function uploadToServer(file) {
-            // 可在此处修改为你的后端上传 URL
-            const uploadUrl = '/api/upload';
-            const fd = new FormData();
-            fd.append('file', file);
-            const resp = await fetch(uploadUrl, { method: 'POST', body: fd });
-            if (!resp.ok) throw new Error('upload failed ' + resp.status);
-            return resp.json();
+        // PUT 二进制到 /api/fs/put，要求 header: path
+        async function uploadToRemote(file) {
+            const putUrl = REMOTE_BASE + '/api/fs/put';
+            const headers = {};
+            // 目标路径（根据服务要求调整），确保以 / 开头
+            const targetPath = (REMOTE_DIR.endsWith('/') ? REMOTE_DIR.slice(0, -1) : REMOTE_DIR) + '/' + file.name;
+            headers['path'] = targetPath;
+            headers['Last-Modified'] = String(file.lastModified || Date.now());
+            headers['As-Task'] = 'false';
+            if (AUTH_TOKEN) headers['Authorization'] = AUTH_TOKEN;
+            const resp = await fetch(putUrl, { method: 'PUT', headers, body: file });
+            if (!resp.ok) {
+                const txt = await resp.text().catch(()=>'');
+                throw new Error('upload failed: ' + resp.status + ' ' + txt);
+            }
+            // 有些实现返回 JSON 包含 code/message/data；我们不依赖于它，随后通过 list 刷新
+            return resp;
         }
 
         function readFileAsDataURL(file) {
@@ -211,19 +204,19 @@
                 return;
             }
             const groups = {};
-            galleryItems.forEach(item => { groups[item.date] = groups[item.date] || []; groups[item.date].push(item); });
+            galleryItems.forEach(item => { groups[item.date || item.modified?.split('T')?.[0] || '未知日期'] = groups[item.date || item.modified?.split('T')?.[0] || '未知日期'] || []; groups[item.date || item.modified?.split('T')?.[0] || '未知日期'].push(item); });
             const dates = Object.keys(groups).sort((a,b) => b.localeCompare(a));
             let html = '';
             dates.forEach(date => {
                 html += `<div class="date-section"><div class="date-header"><strong>${date}</strong><span class="text-sm text-gray-500">${groups[date].length} 项</span></div><div class="media-grid">`;
                 groups[date].forEach(item => {
                     const isVideo = (item.type || '').startsWith('video');
-                    const src = item.url || item.data || '';
-                    html += `<div class="media-item" data-id="${item.id}">`;
+                    const src = item.url || buildFileUrl(item) || '';
+                    html += `<div class="media-item" data-id="${item.id || item.path || item.name}">`;
                     if (isVideo) html += `<video controls src="${src}"></video>`;
-                    else html += `<img src="${src}" alt="${item.name}">`;
+                    else html += `<img src="${src}" alt="${item.name || item.path}">`;
                     html += `<div class="media-actions"><button data-action="remove" title="删除"><i class="fas fa-trash"></i></button></div>`;
-                    html += `<div class="media-meta">${item.name}</div></div>`;
+                    html += `<div class="media-meta">${item.name || item.path}</div></div>`;
                 });
                 html += `</div></div>`;
             });
@@ -237,9 +230,51 @@
             });
         }
 
-        function removeItem(id) {
-            galleryItems = galleryItems.filter(i => i.id !== id);
-            saveToStorage();
+        async function removeItem(id) {
+            const item = galleryItems.find(i => i.id === id);
+            if (!item) return;
+            // 如果是服务器项，先请求删除
+            try {
+                // 使用 /api/fs/delete 或 /api/media/:id 风格均尝试
+                const headers = {};
+                if (AUTH_TOKEN) headers['Authorization'] = AUTH_TOKEN;
+                // 如果 item.path 可用，尝试 POST /api/fs/delete
+                if (item.path) {
+                    const delResp = await fetch(REMOTE_BASE + '/api/fs/delete', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: JSON.stringify({ path: item.path }) });
+                    if (delResp.ok) {
+                        // 删除成功
+                    } else {
+                        // 尝试 DELETE /api/media/:id
+                        await fetch(REMOTE_BASE + '/api/media/' + encodeURIComponent(id), { method: 'DELETE', headers });
+                    }
+                } else if (item.id) {
+                    await fetch(REMOTE_BASE + '/api/media/' + encodeURIComponent(id), { method: 'DELETE', headers });
+                }
+            } catch (e) { console.warn('删除服务器文件失败', e); }
+            galleryItems = galleryItems.filter(i => (i.id || i.path || i.name) !== id);
             renderGallery();
+        }
+
+        function normalizeRemoteItem(raw) {
+            // 根据常见的 /api/fs/list 返回结构构造通用项
+            return {
+                id: raw.id || (raw.name ? encodeURIComponent(raw.name) : undefined),
+                name: raw.name || raw.path || '',
+                type: raw.type || (raw.name && raw.name.match(/\.(mp4|webm|ogg)$/i) ? 'video/*' : 'image/*'),
+                url: raw.url || undefined,
+                path: raw.path || undefined,
+                modified: raw.modified || raw.updated || undefined,
+                sign: raw.sign || raw.hash || undefined
+            };
+        }
+
+        function buildFileUrl(item) {
+            if (!item) return null;
+            // 优先使用 item.url
+            if (item.url && item.url.startsWith('http')) return item.url;
+            // 如果有 sign 和 path，尝试 /api/fs/get?path=...&sign=...
+            if (item.path && item.sign) return REMOTE_BASE + '/api/fs/get?path=' + encodeURIComponent(item.path) + '&sign=' + encodeURIComponent(item.sign);
+            if (item.path) return REMOTE_BASE + '/api/fs/get?path=' + encodeURIComponent(item.path);
+            return null;
         }
 </script></body></html>
