@@ -67,6 +67,9 @@
                             <i class="fas fa-bell"></i>
                             <span class="notification-dot"></span>
                         </button>
+                        <button id="more-button" class="win11-btn-text more-btn" aria-haspopup="true" aria-expanded="false">
+                            更多 <i class="fas fa-caret-down" style="margin-left:6px;"></i>
+                        </button>
                         <button class="win11-btn-text mobile-menu-btn" id="mobile-menu-button">
                             <i class="fas fa-bars"></i>
                         </button>
@@ -83,6 +86,17 @@
                     <a href="Sidebar/timetable.html" class="win11-navbar-link">课程表</a>
                     <a href="Sidebar/treasurebox.html" class="win11-navbar-link nav-treasurebox">百宝箱</a>
                     <a href="Sidebar/about.html" class="win11-navbar-link nav-about">关于我们</a>
+                </div>
+            </div>
+            <!-- 更多 下拉菜单（初始为隐藏） -->
+            <div id="more-menu" class="more-menu win11-card" style="position: absolute; right: 16px; top: 56px; display: none; z-index: 1000; min-width:180px;">
+                <div style="padding:8px;">
+                    <a href="#class-info" class="more-link" style="display:block;padding:6px 8px;color:#333;text-decoration:none;border-radius:4px;">班级介绍</a>
+                    <a href="Sidebar/notice.html" class="more-link" style="display:block;padding:6px 8px;color:#333;text-decoration:none;border-radius:4px;">班级动态</a>
+                    <a href="Sidebar/Rules.html" class="more-link" style="display:block;padding:6px 8px;color:#333;text-decoration:none;border-radius:4px;">班级规章</a>
+                    <a href="Sidebar/timetable.html" class="more-link" style="display:block;padding:6px 8px;color:#333;text-decoration:none;border-radius:4px;">课程表</a>
+                    <a href="Sidebar/treasurebox.html" class="more-link" style="display:block;padding:6px 8px;color:#333;text-decoration:none;border-radius:4px;">百宝箱</a>
+                    <a href="Sidebar/about.html" class="more-link" style="display:block;padding:6px 8px;color:#333;text-decoration:none;border-radius:4px;">关于我们</a>
                 </div>
             </div>
         </nav>
@@ -299,6 +313,56 @@
                     console.warn('AOS动画初始化失败:', error);
                 }
             });
+        </script>
+        <script>
+            // 更多按钮交互：切换下拉并在点击外部时关闭
+            (function(){
+                function initMore() {
+                    const moreBtn = document.getElementById('more-button');
+                    const moreMenu = document.getElementById('more-menu');
+                    if (!moreBtn || !moreMenu) return;
+
+                    function openMenu() {
+                        moreMenu.style.display = 'block';
+                        moreBtn.setAttribute('aria-expanded','true');
+                    }
+                    function closeMenu() {
+                        moreMenu.style.display = 'none';
+                        moreBtn.setAttribute('aria-expanded','false');
+                    }
+
+                    moreBtn.addEventListener('click', function(e){
+                        e.stopPropagation();
+                        const isOpen = moreMenu.style.display === 'block';
+                        if (isOpen) closeMenu(); else openMenu();
+                    });
+
+                    // 点击菜单内链接后关闭
+                    moreMenu.addEventListener('click', function(e){
+                        const target = e.target.closest('a');
+                        if (target) closeMenu();
+                    });
+
+                    // 点击页面任意处关闭菜单
+                    document.addEventListener('click', function(e){
+                        if (!moreMenu.contains(e.target) && e.target !== moreBtn) {
+                            closeMenu();
+                        }
+                    });
+
+                    // ESC 关闭
+                    document.addEventListener('keydown', function(e){
+                        if (e.key === 'Escape') closeMenu();
+                    });
+                }
+
+                // 初始化等待 DOM 就绪
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initMore);
+                } else {
+                    initMore();
+                }
+            })();
         </script>
     </body>
 </html>
