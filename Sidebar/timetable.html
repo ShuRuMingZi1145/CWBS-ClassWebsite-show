@@ -107,37 +107,8 @@
                         <div class="glass-card p-6 rounded-xl">
                             <h2 class="text-2xl font-bold mb-4">课程表</h2>
                             <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-                                <div style="width:100%;max-width:760px;">
-                                    <table style="margin:0 auto;width:auto;border-collapse:collapse;" class="table-auto text-left">
-                                        <thead>
-                                            <tr>
-                                                <th style="padding:8px;border:1px solid #e5e7eb;">课时/星期</th>
-                                                <th style="padding:8px;border:1px solid #e5e7eb;">周一</th>
-                                                <th style="padding:8px;border:1px solid #e5e7eb;">周二</th>
-                                                <th style="padding:8px;border:1px solid #e5e7eb;">周三</th>
-                                                <th style="padding:8px;border:1px solid #e5e7eb;">周四</th>
-                                                <th style="padding:8px;border:1px solid #e5e7eb;">周五</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">第1节</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">语文</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">数学</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">英语</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">科学</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">体育</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">第2节</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">数学</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">语文</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">历史</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">地理</td>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">音乐</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                <div id="timetable-container" style="width:100%;max-width:760px;">
+                                    <!-- 表格内容从 /article/md/timetable.md 加载 -->
                                 </div>
                             </div>
                         </div>
@@ -166,6 +137,19 @@
                     </div>
                 `;
 
-            
+                // 从 /article/md/timetable.md 加载表格内容并插入到占位容器
+                (function loadExternalTable(){
+                    const path = '../article/md/timetable.md';
+                    fetch(path).then(res => {
+                        if (!res.ok) throw new Error('无法加载表格: ' + res.status);
+                        return res.text();
+                    }).then(html => {
+                        const container = document.getElementById('timetable-container');
+                        if (container) container.innerHTML = html;
+                    }).catch(err => {
+                        console.error(err);
+                    });
+                })();
+
             }
         }</script></body></html>
