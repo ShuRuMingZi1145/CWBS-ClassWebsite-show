@@ -111,7 +111,7 @@
                                     <table style="margin:0 auto;width:auto;border-collapse:collapse;" class="table-auto text-left">
                                         <thead>
                                             <tr>
-                                                <th style="padding:8px;border:1px solid #e5e7eb;">时间/星期</th>
+                                                <th style="padding:8px;border:1px solid #e5e7eb;">课时/星期</th>
                                                 <th style="padding:8px;border:1px solid #e5e7eb;">周一</th>
                                                 <th style="padding:8px;border:1px solid #e5e7eb;">周二</th>
                                                 <th style="padding:8px;border:1px solid #e5e7eb;">周三</th>
@@ -121,7 +121,7 @@
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">08:00 - 09:00</td>
+                                                <td style="padding:8px;border:1px solid #e5e7eb;">第1节</td>
                                                 <td style="padding:8px;border:1px solid #e5e7eb;">语文</td>
                                                 <td style="padding:8px;border:1px solid #e5e7eb;">数学</td>
                                                 <td style="padding:8px;border:1px solid #e5e7eb;">英语</td>
@@ -129,7 +129,7 @@
                                                 <td style="padding:8px;border:1px solid #e5e7eb;">体育</td>
                                             </tr>
                                             <tr>
-                                                <td style="padding:8px;border:1px solid #e5e7eb;">09:10 - 10:10</td>
+                                                <td style="padding:8px;border:1px solid #e5e7eb;">第2节</td>
                                                 <td style="padding:8px;border:1px solid #e5e7eb;">数学</td>
                                                 <td style="padding:8px;border:1px solid #e5e7eb;">语文</td>
                                                 <td style="padding:8px;border:1px solid #e5e7eb;">历史</td>
@@ -138,12 +138,6 @@
                                             </tr>
                                         </tbody>
                                     </table>
-                                </div>
-
-                                <div style="width:100%;max-width:760px;background:transparent;">
-                                    <div style="height:320px;">
-                                        <canvas id="timetableChart" style="width:100%;height:100%;display:block;"></canvas>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -172,41 +166,6 @@
                     </div>
                 `;
 
-                // 动态加载 Chart.js（如果尚未加载），然后渲染图表
-                function ensureChart(callback) {
-                    if (window.Chart) return callback();
-                    const s = document.createElement('script');
-                    s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-                    s.onload = callback;
-                    document.head.appendChild(s);
-                }
-
-                ensureChart(function() {
-                    const canvas = document.getElementById('timetableChart');
-                    if (!canvas || !window.Chart) return;
-                    const ctx = canvas.getContext('2d');
-                    // 简单示例：显示每天的课时数量条形图
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: ['周一', '周二', '周三', '周四', '周五'],
-                            datasets: [{
-                                label: '课时数',
-                                data: [4, 5, 4, 5, 3],
-                                backgroundColor: 'rgba(54,162,235,0.7)'
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: true }
-                            },
-                            scales: {
-                                y: { beginAtZero: true }
-                            }
-                        }
-                    });
-                });
+            
             }
         }</script></body></html>
