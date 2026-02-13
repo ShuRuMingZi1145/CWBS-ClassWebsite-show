@@ -96,6 +96,7 @@
       <td style="padding:8px;border:1px solid #e5e7eb;">数学</td>
       <td style="padding:8px;border:1px solid #e5e7eb;">英语</td>
       <td style="padding:8px;border:1px solid #e5e7eb;">历史/地理/政治/生物</td>
+      <td style="padding:8px;border:1px solid #e5e7eb;"> </td>
       <td style="padding:8px;border:1px solid #e5e7eb;">历史&政治 周练</td>
     </tr>
     <tr>
